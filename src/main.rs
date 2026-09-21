@@ -1,5 +1,6 @@
 mod assembler;
 mod instruction;
+mod lexer;
 mod parser;
 
 fn main() {

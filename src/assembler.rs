@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::instruction::{Instruction, Register, ValidationError};
+use crate::instruction::{self, Instruction, Register, ValidationError};
 
 /// Condition codes used by B.cond.
 const COND_EQ: u32 = 0x0;
@@ -164,6 +164,19 @@ fn b_cond(
 
 fn ubfm(rd: Register, rn: Register, immr: u32, imms: u32) -> u32 {
     0xD3400000 | (immr << 16) | (imms << 10) | (reg(rn) << 5) | reg(rd)
+}
+
+fn parse_line(line: &String) -> Result<Instruction, String> {
+    let (opcode, operands) = line
+        .split_once(' ')
+        .ok_or("Expected instruction operands")?;
+
+    match opcode.to_lowercase() {
+        "add" => Ok(Instruction::Add { rd: 1, rn: 2, rm: 3 })
+        _ => Err(!fmt("Unknown opcode: "))
+    }
+
+    return Ok(Instruction::Ret);
 }
 
 #[cfg(test)]

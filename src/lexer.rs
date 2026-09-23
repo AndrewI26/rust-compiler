@@ -47,7 +47,7 @@ pub fn tokenize(code: &String) -> Result<Tokens, String> {
             "int" => Ok(Token::Int),
             _ => Err(format!("Unknown token: {}", token)),
         })
-        .collect()?;
+        .collect::<Result<Vec<_>, _>>()?;
 
     Ok(Tokens(tokens))
 }
@@ -59,6 +59,11 @@ mod tests {
     #[test]
     fn basic() {
         let code = String::from("int x = 4;");
-        println!("tokens: {}", tokenize(&code));
+        let res = tokenize(&code)
+        match res {
+            Ok(tokens) => println!("tokens: {}", tokens),
+            Err(string) => println!("tokens: {}", string)
+        }
+        ;
     }
 }

@@ -3,5 +3,13 @@
 version = 4
 
 [[package]]
-name = "rust-compiler"
+name = "assembler"
+version = "0.1.0"
+
+[[package]]
+name = "common"
+version = "0.1.0"
+
+[[package]]
+name = "compiler"
 version = "0.1.0"

@@ -1,4 +1,4 @@
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum Register {
     X0,
     X1,
@@ -42,6 +42,7 @@ impl Register {
 }
 
 /// Condition for `b.cond`.
+#[derive(Debug)]
 pub enum Condition {
     Eq,
     Ne,
@@ -76,6 +77,7 @@ impl Condition {
 /// One instruction from the README. Offsets for `ldr`, `b` and `b.cond` are
 /// counted in instructions (multiplied by 4 to get bytes), so labels must be
 /// resolved before building these.
+#[derive(Debug)]
 pub enum Instruction {
     // 3-register format
     Add {

@@ -6,10 +6,10 @@ use crate::token::Tokens;
 ///
 /// **Does not impliment backtracking.**
 ///
-/// # Panics
+/// # Errors
 ///
-/// Panics if the input is invalid ARM syntax.
-pub fn munch(input: &String) -> Tokens {
+/// Returns an error if the input is invalid ARM syntax.
+pub fn munch(input: &String) -> Result<Tokens, String> {
     let chars: Vec<char> = input.chars().collect();
     let mut tokens = Vec::new();
 
@@ -28,8 +28,11 @@ pub fn munch(input: &String) -> Tokens {
             }
             Err(()) => {
                 // No transition: the current lexeme is as long as it can get.
+                if lexeme.is_empty() {
+                    return Err(format!("Unexpected character {:?}", char));
+                }
                 if !state.is_accepting() {
-                    panic!("Invalid token {:?} at {:?}", lexeme, char);
+                    return Err(format!("Invalid token {:?} at {:?}", lexeme, char));
                 }
 
                 if let Some(token) = to_token(&state, lexeme) {
@@ -46,7 +49,7 @@ pub fn munch(input: &String) -> Tokens {
     // Output whatever lexeme was in progress when the input ran out.
     if !lexeme.is_empty() {
         if !state.is_accepting() {
-            panic!("Invalid token {:?} at end of input", lexeme);
+            return Err(format!("Invalid token {:?} at end of line", lexeme));
         }
 
         if let Some(token) = to_token(&state, lexeme) {
@@ -54,7 +57,7 @@ pub fn munch(input: &String) -> Tokens {
         }
     }
 
-    Tokens(tokens)
+    Ok(Tokens(tokens))
 }
 
 #[cfg(test)]
@@ -63,7 +66,7 @@ mod tests {
     use crate::token::Token::{self, *};
 
     fn lex(input: &str) -> Vec<Token> {
-        munch(&input.to_string()).0
+        munch(&input.to_string()).unwrap().0
     }
 
     #[test]
@@ -191,32 +194,27 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
-    fn lone_minus_panics() {
-        lex("-");
+    fn lone_minus_is_error() {
+        assert!(munch(&"-".to_string()).is_err());
     }
 
     #[test]
-    #[should_panic]
-    fn minus_zero_panics() {
-        lex("-0");
+    fn minus_zero_is_error() {
+        assert!(munch(&"-0".to_string()).is_err());
     }
 
     #[test]
-    #[should_panic]
-    fn hex_prefix_without_digits_panics() {
-        lex("0x");
+    fn hex_prefix_without_digits_is_error() {
+        assert!(munch(&"0x".to_string()).is_err());
     }
 
     #[test]
-    #[should_panic]
-    fn lone_dot_panics() {
-        lex(". word");
+    fn lone_dot_is_error() {
+        assert!(munch(&". word".to_string()).is_err());
     }
 
     #[test]
-    #[should_panic]
-    fn invalid_character_panics() {
-        lex("add x1, #5");
+    fn invalid_character_is_error() {
+        assert!(munch(&"add x1, #5".to_string()).is_err());
     }
 }

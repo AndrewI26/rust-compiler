@@ -1,2 +1,2 @@
 [workspace]
-members = ["compiler", "assembler", "common"]
+members = ["compiler", "assembler", "common", "web"]

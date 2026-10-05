@@ -21,7 +21,7 @@ fn imm19(opcode: u32, offset: i32, low: u32) -> u32 {
 ///
 /// Assumes the instruction has already passed `validate()`; out-of-range
 /// offsets are truncated to fit their field.
-pub fn compile_line(instruction: Instruction) -> u32 {
+pub fn compile_line(instruction: &Instruction) -> u32 {
     match instruction {
         Instruction::Add { rd, rn, rm } => three_reg(
             0b10001011_001,
@@ -78,19 +78,39 @@ pub fn compile_line(instruction: Instruction) -> u32 {
         Instruction::Br { rn } => three_reg(0b11010110_000, 0b11111, 0, rn.number(), 0),
         Instruction::Blr { rn } => three_reg(0b11010110_001, 0b11111, 0, rn.number(), 0),
 
-        Instruction::Ldur { rd, rn, offset } => two_reg(0b11111000_010, offset, &rn, &rd),
-        Instruction::Stur { rd, rn, offset } => two_reg(0b11111000_000, offset, &rn, &rd),
+        Instruction::Ldur { rd, rn, offset } => two_reg(0b11111000_010, *offset, rn, rd),
+        Instruction::Stur { rd, rn, offset } => two_reg(0b11111000_000, *offset, rn, rd),
 
-        Instruction::Ldr { rd, offset } => imm19(0b01011000, offset, rd.number()),
+        Instruction::Ldr { rd, offset } => imm19(0b01011000, *offset, rd.number()),
 
-        Instruction::B { offset } => (0b000101 << 26) | ((offset as u32) & 0x3FFFFFF),
-        Instruction::BCond { cond, offset } => imm19(0b01010100, offset, cond.bits()),
+        Instruction::B { offset } => (0b000101 << 26) | ((*offset as u32) & 0x3FFFFFF),
+        Instruction::BCond { cond, offset } => imm19(0b01010100, *offset, cond.bits()),
+    }
+}
+
+/// Bit widths of each field in an instruction's encoding, from the high bits
+/// down, matching the formats in the README.
+pub fn fields(instruction: &Instruction) -> &'static [u32] {
+    match instruction {
+        Instruction::Add { .. }
+        | Instruction::Sub { .. }
+        | Instruction::Mul { .. }
+        | Instruction::Smulh { .. }
+        | Instruction::Umulh { .. }
+        | Instruction::Sdiv { .. }
+        | Instruction::Udiv { .. }
+        | Instruction::Cmp { .. }
+        | Instruction::Br { .. }
+        | Instruction::Blr { .. } => &[11, 5, 6, 5, 5],
+        Instruction::Ldur { .. } | Instruction::Stur { .. } => &[11, 9, 2, 5, 5],
+        Instruction::Ldr { .. } | Instruction::BCond { .. } => &[8, 19, 5],
+        Instruction::B { .. } => &[6, 26],
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::compile_line;
+    use super::{compile_line, fields};
     use crate::instruction::Condition;
     use crate::instruction::Instruction::*;
     use crate::instruction::Register::*;
@@ -98,7 +118,7 @@ mod tests {
     #[test]
     fn three_register() {
         assert_eq!(
-            compile_line(Add {
+            compile_line(&Add {
                 rd: X0,
                 rn: X1,
                 rm: X2
@@ -106,7 +126,7 @@ mod tests {
             0x8B226020
         );
         assert_eq!(
-            compile_line(Sub {
+            compile_line(&Sub {
                 rd: X3,
                 rn: X4,
                 rm: X5
@@ -114,7 +134,7 @@ mod tests {
             0xCB256083
         );
         assert_eq!(
-            compile_line(Mul {
+            compile_line(&Mul {
                 rd: X0,
                 rn: X1,
                 rm: X2
@@ -122,7 +142,7 @@ mod tests {
             0x9B027C20
         );
         assert_eq!(
-            compile_line(Smulh {
+            compile_line(&Smulh {
                 rd: X0,
                 rn: X1,
                 rm: X2
@@ -130,7 +150,7 @@ mod tests {
             0x9B427C20
         );
         assert_eq!(
-            compile_line(Umulh {
+            compile_line(&Umulh {
                 rd: X0,
                 rn: X1,
                 rm: X2
@@ -138,7 +158,7 @@ mod tests {
             0x9BC27C20
         );
         assert_eq!(
-            compile_line(Sdiv {
+            compile_line(&Sdiv {
                 rd: X0,
                 rn: X1,
                 rm: X2
@@ -146,7 +166,7 @@ mod tests {
             0x9AC20C20
         );
         assert_eq!(
-            compile_line(Udiv {
+            compile_line(&Udiv {
                 rd: X0,
                 rn: X1,
                 rm: X2
@@ -157,15 +177,15 @@ mod tests {
 
     #[test]
     fn compare_and_register_branches() {
-        assert_eq!(compile_line(Cmp { rn: X1, rm: X2 }), 0xEB22603F);
-        assert_eq!(compile_line(Br { rn: X30 }), 0xD61F03C0);
-        assert_eq!(compile_line(Blr { rn: X1 }), 0xD63F0020);
+        assert_eq!(compile_line(&Cmp { rn: X1, rm: X2 }), 0xEB22603F);
+        assert_eq!(compile_line(&Br { rn: X30 }), 0xD61F03C0);
+        assert_eq!(compile_line(&Blr { rn: X1 }), 0xD63F0020);
     }
 
     #[test]
     fn loads_and_stores() {
         assert_eq!(
-            compile_line(Ldur {
+            compile_line(&Ldur {
                 rd: X0,
                 rn: X1,
                 offset: 8
@@ -173,7 +193,7 @@ mod tests {
             0xF8408020
         );
         assert_eq!(
-            compile_line(Ldur {
+            compile_line(&Ldur {
                 rd: X0,
                 rn: X1,
                 offset: -8
@@ -181,33 +201,54 @@ mod tests {
             0xF85F8020
         );
         assert_eq!(
-            compile_line(Stur {
+            compile_line(&Stur {
                 rd: X0,
                 rn: X1,
                 offset: 8
             }),
             0xF8008020
         );
-        assert_eq!(compile_line(Ldr { rd: X0, offset: 2 }), 0x58000040);
+        assert_eq!(compile_line(&Ldr { rd: X0, offset: 2 }), 0x58000040);
     }
 
     #[test]
     fn branches() {
-        assert_eq!(compile_line(B { offset: 1 }), 0x14000001);
-        assert_eq!(compile_line(B { offset: -1 }), 0x17FFFFFF);
+        assert_eq!(compile_line(&B { offset: 1 }), 0x14000001);
+        assert_eq!(compile_line(&B { offset: -1 }), 0x17FFFFFF);
         assert_eq!(
-            compile_line(BCond {
+            compile_line(&BCond {
                 cond: Condition::Eq,
                 offset: 2
             }),
             0x54000040
         );
         assert_eq!(
-            compile_line(BCond {
+            compile_line(&BCond {
                 cond: Condition::Lt,
                 offset: -1
             }),
             0x54FFFFEB
         );
+    }
+
+    #[test]
+    fn fields_add_up_to_32_bits() {
+        let instructions = [
+            Add {
+                rd: X0,
+                rn: X1,
+                rm: X2,
+            },
+            Ldur {
+                rd: X0,
+                rn: X1,
+                offset: 0,
+            },
+            Ldr { rd: X0, offset: 0 },
+            B { offset: 0 },
+        ];
+        for instruction in &instructions {
+            assert_eq!(fields(instruction).iter().sum::<u32>(), 32);
+        }
     }
 }

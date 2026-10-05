@@ -1,5 +1,5 @@
 /// Each varient represents a token kind, with an optional lexeme attached to the enum.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Token {
     /// A period followed by one or more alphanumeric chars.
     Dotid(String),
@@ -40,4 +40,4 @@ pub enum Token {
 }
 
 #[derive(Debug)]
-pub struct Tokens(Vec<Token>);
+pub struct Tokens(pub Vec<Token>);

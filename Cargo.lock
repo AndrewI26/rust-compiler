@@ -25,6 +25,17 @@ version = "0.1.0"
 [[package]]
 name = "compiler"
 version = "0.1.0"
+dependencies = [
+ "assembler",
+ "emulator",
+]
+
+[[package]]
+name = "emulator"
+version = "0.1.0"
+dependencies = [
+ "assembler",
+]
 
 [[package]]
 name = "futures-core"
@@ -170,6 +181,7 @@ name = "web"
 version = "0.1.0"
 dependencies = [
  "assembler",
+ "compiler",
  "wasm-bindgen",
  "web-sys",
 ]

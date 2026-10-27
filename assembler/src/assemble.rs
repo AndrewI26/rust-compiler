@@ -162,6 +162,10 @@ pub fn analyze(input: &str) -> Program {
 /// Parses and validates one line (labels already removed).
 fn parse_item(rest: &[Token], index: i32, labels: &HashMap<String, i32>) -> Result<Item, String> {
     match rest {
+        [Dotid(directive), Id(label)] if directive == ".8byte" => match labels.get(label) {
+            Some(target) => Ok(Item::Data(*target as u64 * 4)),
+            None => Err(format!("Unknown label {:?}", label)),
+        },
         [Dotid(directive), value] if directive == ".8byte" => Ok(Item::Data(immediate64(value)?)),
 
         _ => {
@@ -450,6 +454,14 @@ value: .8byte 0x123456789ABCDEF0
         assert_eq!(
             assemble(program),
             vec![0x58000041, 0xD61F03C0, 0x12345678, 0x9ABCDEF0]
+        );
+    }
+
+    #[test]
+    fn eight_byte_label_address() {
+        assert_eq!(
+            assemble("b 1\nhere: br x30\n.8byte here"),
+            vec![0x14000001, 0xD61F03C0, 0, 4]
         );
     }
 

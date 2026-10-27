@@ -1,2 +1,3 @@
 [workspace]
-members = ["compiler", "assembler", "common", "web"]
+resolver = "3"
+members = ["compiler", "assembler", "emulator", "common", "web"]

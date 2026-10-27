@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ARM Assembler</title>
+    <title>C Compiler</title>
     <link data-trunk rel="rust" />
     <style>
       :root {
@@ -206,11 +206,9 @@
         color: var(--accent);
       }
 
-      /* The editor stacks a transparent textarea on top of a backdrop that
-         holds the same text, so error lines can be styled underneath. */
       .editor {
         display: flex;
-        height: 40vh;
+        height: 52vh;
         min-height: 240px;
         overflow: hidden;
       }
@@ -286,55 +284,168 @@
         caret-color: var(--text);
       }
 
+      .title {
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .subtitle {
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .controls {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+
+      .picker {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      select {
+        padding: 4px 8px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--panel);
+        color: var(--text);
+        font: inherit;
+      }
+
+      .top {
+        display: grid;
+        grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+        gap: 16px;
+      }
+
+      .run h2 + * {
+        margin-bottom: 12px;
+      }
+
+      .stdin {
+        position: static;
+        height: 72px;
+        padding: 8px 12px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--panel);
+        color: var(--text);
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 14px;
+        resize: vertical;
+      }
+
+      .output {
+        flex: 1;
+        height: auto;
+        min-height: 160px;
+      }
+
+      .stdout {
+        margin: 4px 0;
+        font: inherit;
+        white-space: pre-wrap;
+      }
+
+      .meta {
+        margin: 8px 0 4px;
+        font-family: system-ui, sans-serif;
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .tree {
+        white-space: pre;
+      }
+
+      .node-kind {
+        color: var(--accent);
+        font-weight: 600;
+      }
+
+      .code-table td.label {
+        color: var(--accent);
+      }
+
+      .code-table td {
+        white-space: pre;
+      }
+
+      code {
+        font-family: ui-monospace, Menlo, monospace;
+      }
+
       @media (max-width: 900px) {
-        .stages {
+        .stages,
+        .top {
           grid-template-columns: 1fr;
+        }
+
+        header {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 8px;
         }
       }
     </style>
   </head>
   <body>
     <header>
-      <h1>ARM Assembler</h1>
-      <span id="status" class="status"></span>
+      <div class="title">
+        <h1>C Compiler</h1>
+        <span class="subtitle">C → ARM64 subset → machine code → emulator</span>
+      </div>
+      <div class="controls">
+        <label class="picker">Example <select id="examples"></select></label>
+        <span id="status" class="status"></span>
+      </div>
     </header>
     <main>
-      <section>
-        <h2>Assembly</h2>
-        <div class="editor">
-          <div id="gutter" class="gutter"></div>
-          <div class="code">
-            <div id="backdrop" class="backdrop"></div>
-            <textarea id="editor" spellcheck="false" wrap="off">
-main:  add x1, x2, x3
-       ldur x4, [x1, 8]
-       cmp x1, x4
-       b.eq end
-       ldr x5, value
-end:   br x30
-value: .8byte 0x123456789ABCDEF0</textarea>
+      <div class="top">
+        <section>
+          <h2>C source</h2>
+          <div class="editor">
+            <div id="gutter" class="gutter"></div>
+            <div class="code">
+              <div id="backdrop" class="backdrop"></div>
+              <textarea id="editor" spellcheck="false" wrap="off"></textarea>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+        <section class="run">
+          <h2>Standard input</h2>
+          <textarea id="stdin" class="stdin" spellcheck="false" placeholder="Text for getchar() and read_int()"></textarea>
+          <h2><span class="step">▶</span>Output</h2>
+          <div id="output" class="stage-body output"></div>
+        </section>
+      </div>
       <div class="stages">
         <section>
           <h2><span class="step">1</span>Tokenize</h2>
-          <p class="hint">The DFA splits each line into tokens (maximal munch).</p>
+          <p class="hint">The lexer expands <code>#define</code>s and splits the source into tokens.</p>
           <div id="tokens" class="stage-body"></div>
         </section>
         <section>
-          <h2><span class="step">2</span>Labels</h2>
-          <p class="hint">Pass 1 records which word each label points at.</p>
-          <div id="labels" class="stage-body"></div>
+          <h2><span class="step">2</span>Parse</h2>
+          <p class="hint">A recursive-descent parser builds the syntax tree.</p>
+          <div id="ast" class="stage-body"></div>
         </section>
         <section>
-          <h2><span class="step">3</span>Parse</h2>
-          <p class="hint">Pass 2 turns each line's tokens into a validated instruction.</p>
-          <div id="parse" class="stage-body"></div>
+          <h2><span class="step">3</span>Generate assembly</h2>
+          <p class="hint">Code generation type-checks the tree and emits ARM assembly plus the runtime it uses.</p>
+          <div id="assembly" class="stage-body"></div>
         </section>
         <section>
-          <h2><span class="step">4</span>Encode</h2>
-          <p class="hint">Each instruction becomes a 32-bit word, split into its fields.</p>
+          <h2><span class="step">4</span>Assemble</h2>
+          <p class="hint">The assembler encodes each instruction as a 32-bit word, split into its fields.</p>
           <div id="encode" class="stage-body"></div>
         </section>
       </div>

@@ -1,3 +1,30 @@
+# C Compiler
+
+A compiler for a subset of C that targets the ARM64 subset below, with an assembler, an emulator, and a WebAssembly web app that shows every stage.
+
+```bash
+cargo run -p compiler -- examples/fibonacci.c
+cargo run -p compiler -- -S examples/fibonacci.c
+cd web && trunk serve
+```
+
+## Supported C
+
+- Types: `int`, `long`, `char`, `void`, pointers, and multi-dimensional arrays. Every scalar is 64 bits because the ISA only loads and stores 8-byte words, so `sizeof(char) == 8`.
+- Functions with recursion and prototypes, globals, and block-scoped locals with initializers (`{...}` lists and string literals).
+- Statements: `if`/`else`, `while`, `do`/`while`, `for`, `break`, `continue`, `return`.
+- Every C operator except struct access: arithmetic, comparison, logical (short-circuit), bitwise, shifts, compound assignment, `++`/`--`, `?:`, `,`, `&`, `*`, `[]`, casts, `sizeof`.
+- `#define NAME value`; `#include` lines are ignored.
+- Runtime: `printf` (`%d %i %c %s %x %%`), `putchar`, `getchar`, `puts`, `print_int`, `print_str`, `read_int`, `malloc`, `calloc`, `free`, `strlen`, `strcmp`, `strcpy`, `abs`, `exit`.
+
+## Conventions
+
+- `x9`–`x24` hold expression temporaries, `x25` the return address to the loader, `x26` = 1, `x27` = 8, `x28` the stack pointer, `x29` the frame pointer.
+- Arguments are pushed on the stack; the return value is in `x0`.
+- Storing to `0xFFFF000C` writes a byte to stdout; loading from `0xFFFF0004` reads a byte from stdin (-1 at end of input).
+- `.8byte label` stores a label's address, which is how code loads function and data addresses.
+- The instruction set has no bitwise instructions, so `& | ^ << >>` call runtime helpers that are written in C.
+
 ## 3-Register Format
 
 | Instruction | Assembly syntax | Behaviour | Opcode | xm | Flags | xn | xd |

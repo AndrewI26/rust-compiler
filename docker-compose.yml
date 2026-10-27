@@ -1,0 +1,8 @@
+services:
+  build:
+    build:
+      context: .
+      args:
+        PUBLIC_URL: ${PUBLIC_URL:-/}
+    volumes:
+      - ./static:/static
